@@ -1,0 +1,15 @@
+{
+  "inputs": [],
+  "servers": {
+    "AllegroMCPServer": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "Host/Host.csproj"
+      ],
+      "env": {}
+    }
+  }
+}

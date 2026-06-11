@@ -1,3 +1,4 @@
 <Solution>
-  <Project Path="AllegroMCP/AllegroMCP.csproj" />
+  <Project Path="Host/Host.csproj" />
+  <Project Path="Server/Server.csproj" Id="24757c45-7df2-47c5-a50d-6f3f3d722aac" />
 </Solution>
