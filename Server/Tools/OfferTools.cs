@@ -44,19 +44,19 @@ public class OfferTools(HttpClient client) : ToolsBase(client)
 
     [McpServerTool]
     [Description("Updates available stock for an offer")]
-    public async Task<string?> UpdateStock(
+    public Task<string?> UpdateStock(
         [Description("Access token. Can be obtained from a file")] string accessToken,
         [Description("Offer identifier")] string offerId,
         [Description("New available stock quantity")] int available)
-    {
-        var request = new HttpRequestMessage(HttpMethod.Patch, $"{OfferEndpoint}/product-offers/{Uri.EscapeDataString(offerId)}")
-        {
-            Content = new StringContent(JsonSerializer.Serialize(new { stock = new { available } }),
-                Encoding.UTF8, "application/vnd.allegro.public.v1+json")
-        };
+        => UpdateOffer(accessToken, offerId, JsonSerializer.Serialize(new { stock = new { available } }));
 
-        return await SendAsync(request, accessToken);
-    }
+    [McpServerTool]
+    [Description("Updates price of an offer")]
+    public Task<string?> UpdatePrice(
+        [Description("Access token. Can be obtained from a file")] string accessToken,
+        [Description("Offer identifier")] string offerId,
+        [Description("New price")] decimal price)
+        => UpdateOffer(accessToken, offerId, JsonSerializer.Serialize(new { sellingMode = new { price = new { amount = price } } }));
 
     [McpServerTool]
     [Description("Links an offer to a product")]
@@ -86,12 +86,27 @@ public class OfferTools(HttpClient client) : ToolsBase(client)
             "images":{{{images}}}, "description":{{{description}}}}
             """;
 
-        var request = new HttpRequestMessage(HttpMethod.Patch, $"{OfferEndpoint}/product-offers/{Uri.EscapeDataString(offerId)}")
-        {
-            Content = new StringContent(body,
-                Encoding.UTF8, "application/vnd.allegro.public.v1+json")
-        };
-
-        return await SendAsync(request, accessToken);
+        return await UpdateOffer(accessToken, offerId, body);
     }
+
+    [McpServerTool]
+    [Description("Starts or activates an offer")]
+    public Task<string?> StartOffer(
+        [Description("Access token. Can be obtained from a file")] string accessToken,
+        [Description("Offer identifier")] string offerId)
+        => UpdateOffer(accessToken, offerId, JsonSerializer.Serialize(new { publication = new { status = "ACTIVE" } }));
+
+    [McpServerTool]
+    [Description("Stops or ends an offer")]
+    public Task<string?> StopOffer(
+        [Description("Access token. Can be obtained from a file")] string accessToken,
+        [Description("Offer identifier")] string offerId)
+        => UpdateOffer(accessToken, offerId, JsonSerializer.Serialize(new { publication = new { status = "ENDED" } }));
+
+    private Task<string?> UpdateOffer(string accessToken, string offerId, string body)
+        => SendAsync(
+            new HttpRequestMessage(HttpMethod.Patch, $"{OfferEndpoint}/product-offers/{Uri.EscapeDataString(offerId)}")
+            {
+                Content = new StringContent(body, Encoding.UTF8, "application/vnd.allegro.public.v1+json")
+            }, accessToken);
 }
