@@ -22,4 +22,30 @@ public class MessageTools(HttpClient client, ITokenProvider provider) : ToolsBas
     public Task<string?> GetThread(
         [Description("Thread identifier")] string threadId)
         => GetAsync($"{Endpoint}/{threadId}");
+
+    [McpServerTool]
+    [Description("Lists messages in a user thread")]
+    public Task<string?> ListMessages(
+        [Description("Thread identifier")] string threadId,
+        [Description("The maximum number of messages returned in the response")] int limit = 10,
+        [Description("Index of the first returned message from all results")] int offset = 0,
+        [Description("Message creation date before filter parameter (exclusive) - cannot be used with offset")] DateTime? before = null,
+        [Description("Message creation date after filter parameter (exclusive)")] DateTime? after = null)
+    {
+        string filter = string.Empty;
+        if (limit > 0)
+            filter += $"&limit={limit}";
+        if (offset > 0)
+            filter += $"&offset={offset}";
+        else
+        {
+            if (before.HasValue)
+                filter += $"&before={before.Value:yyyy-MM-ddTHH:mm:ss.fffZ}";
+            if (after.HasValue)
+                filter += $"&after={after.Value:yyyy-MM-ddTHH:mm:ss.fffZ}";
+        }
+        if (filter.Length > 0)
+            filter = "?" + filter[1..]; // replace first '&' with '?'
+        return GetAsync($"{Endpoint}/{threadId}/messages{filter}");
+    }
 }
