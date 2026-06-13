@@ -1,5 +1,6 @@
 ﻿using ModelContextProtocol.Server;
 using Server.Models;
+using Server.Services;
 using System.ComponentModel;
 using System.Net.Http.Headers;
 using System.Text;
@@ -9,7 +10,7 @@ namespace Server.Tools;
 
 [McpServerToolType]
 [Description("Implements OAuth2 Device Flow for Allegro. To integrate with your app, you'll receive a user code and a device code. The user enters the user code you provided on a dedicated page (verification uri). If you want this link to be clickable (e.g., you want to send it by email or present it as a QR code), use verification_uri_complete. The user then consents to the app accessing their data and making changes on their behalf (if they haven't previously given their consent). At this time, your app queries a dedicated endpoint using the device code (device_code) to receive, among other things, an access token, which you can use to invoke REST API resources on the user's behalf")]
-public class AuthorizationTools(IHttpClientFactory factory)
+public class AuthorizationTools(IHttpClientFactory factory, ITokenProvider provider)
 {
     // Read client credentials from environment variables to avoid embedding secrets in source
     private static readonly string ClientId = Environment.GetEnvironmentVariable("ALLEGRO_CLIENT_ID")
@@ -17,7 +18,6 @@ public class AuthorizationTools(IHttpClientFactory factory)
     private static readonly string ClientSecret = Environment.GetEnvironmentVariable("ALLEGRO_CLIENT_SECRET")
         ?? throw new InvalidOperationException("ALLEGRO_CLIENT_SECRET not configured");
 
-    private static readonly string PathToTokensFile = Path.Combine(AppContext.BaseDirectory, "allegro_tokens.txt");
     private static readonly string DeviceAuthorizationEndpoint = "https://allegro.pl/auth/oauth";
 
     [McpServerTool]
@@ -44,9 +44,7 @@ public class AuthorizationTools(IHttpClientFactory factory)
 
         tokens.ExpiresOn = DateTime.UtcNow + TimeSpan.FromSeconds(tokens.ExpiresIn);
 
-        SaveTokensToFile(filePathToSave, tokens);
-
-        return filePathToSave;
+        return provider.Save(tokens);
     }
 
     [McpServerTool]
@@ -68,39 +66,7 @@ public class AuthorizationTools(IHttpClientFactory factory)
 
         tokens.ExpiresOn = DateTime.UtcNow + TimeSpan.FromSeconds(tokens.ExpiresIn);
 
-        return SaveTokensToFile(filePathToSave, tokens);
-    }
-
-    [McpServerTool]
-    [Description("Gets an access token from a file. If it is null, try to refresh tokens")]
-    public static string? GetAccessToken([Description("The file path where tokens are saved")] string? file = null)
-    {
-        var tokens = RemoveExpiredTokens(file) ??
-            throw new InvalidOperationException("Access token is not found. Please generate tokens.");
-        if (tokens.ExpiresOn <= DateTime.UtcNow)
-            throw new InvalidOperationException("Access token is expired. Please refresh tokens.");
-        return tokens.AccessToken;
-    }
-
-    [McpServerTool]
-    [Description("Gets a refresh token from a file. If it is null, you should re-generate new pair of tokens")]
-    public static string? GetRefreshToken([Description("The file path where tokens are saved")] string? file = null)
-        => RemoveExpiredTokens(file)?.RefreshToken;
-
-    [McpServerTool]
-    [Description("Deletes a file with access and refresh tokens if they are expired, returns tokens otherwise")]
-    public static Tokens? RemoveExpiredTokens([Description("The file path where tokens are saved")] string? file = null)
-    {
-        var tokens = LoadTokensFromFile(file);
-
-        if (tokens == null || tokens.ExpiresOn <= DateTime.UtcNow - TimeSpan.FromDays(90) - TimeSpan.FromHours(12))
-        {
-            // Delete a file with tokens if tokens are expired for more than 90 days (refresh token lifetime according to Allegro API documentation)
-            SaveTokensToFile(file);
-            return null;
-        }
-
-        return tokens;
+        return provider.Save(tokens);
     }
 
     private async Task<string?> PostAuthorization(string uri, string body)
@@ -120,57 +86,5 @@ public class AuthorizationTools(IHttpClientFactory factory)
         response.EnsureSuccessStatusCode();
 
         return await response.Content.ReadAsStringAsync();
-    }
-
-    // Loads tokens from a file if present. Returns null if not found or empty.
-    private static Tokens? LoadTokensFromFile(string? file)
-    {
-        try
-        {
-            file ??= PathToTokensFile;
-
-            if (File.Exists(file))
-            {
-                var json = File.ReadAllText(file).Trim();
-                return JsonSerializer.Deserialize<Tokens>(json);
-            }
-        }
-        catch
-        {
-            // Ignore file IO errors and return null so interactive flow continues
-        }
-
-        return null;
-    }
-
-    // Persists tokens to a file. Overwrites existing content.
-    private static string SaveTokensToFile(string? file = null, Tokens? tokens = null)
-    {
-        file ??= PathToTokensFile;
-
-        try
-        {
-            if (tokens is null)
-            {
-                // Remove file if token cleared
-                if (File.Exists(file)) File.Delete(file);
-                return file;
-            }
-
-            var json = JsonSerializer.Serialize(tokens);
-
-            // Ensure directory exists
-            var dir = Path.GetDirectoryName(file);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
-
-            File.WriteAllText(file, json);
-        }
-        catch
-        {
-            // Ignore errors writing token file to avoid breaking main flow
-        }
-
-        return file;
     }
 }

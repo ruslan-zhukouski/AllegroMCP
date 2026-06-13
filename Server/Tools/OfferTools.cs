@@ -1,4 +1,5 @@
 ﻿using ModelContextProtocol.Server;
+using Server.Services;
 using System.ComponentModel;
 using System.Text;
 using System.Text.Json;
@@ -8,62 +9,55 @@ namespace Server.Tools;
 
 [McpServerToolType]
 [Description("Provides methods to retrieve offers data")]
-public class OfferTools(HttpClient client) : SaleTools(client)
+public class OfferTools(HttpClient client, ITokenProvider provider) : SaleTools(client, provider)
 {
     [McpServerTool]
     [Description("Gets a list of seller's offers")]
     public Task<string?> GetOffers(
-        [Description("Access token. Can be obtained from a file")] string accessToken,
         [Description("The maximum number of offers returned in the response")] int limit = 10,
         [Description("The place to download the next portion of data from")] int offset = 0)
-        => GetAsync(accessToken, $"{Endpoint}/offers?limit={limit}&offset={offset}");
+        => GetAsync($"{Endpoint}/offers?limit={limit}&offset={offset}");
 
     [McpServerTool]
     [Description("Gets all data of the particular offer")]
     public Task<string?> GetOffer(
-        [Description("Access token. Can be obtained from a file")] string accessToken,
         [Description("Offer identifier")] string offerId)
-        => GetAsync(accessToken, $"{Endpoint}/product-offers/{Uri.EscapeDataString(offerId)}");
+        => GetAsync($"{Endpoint}/product-offers/{Uri.EscapeDataString(offerId)}");
 
     [McpServerTool]
     [Description("Gets selected data for a specific offer")]
     public Task<string?> GetSelectedDataFromOffer(
-        [Description("Access token. Can be obtained from a file")] string accessToken,
         [Description("Offer identifier")] string offerId,
         [Description("Comma-separated list of fields to include")] string filter)
-        => GetAsync(accessToken, $"{Endpoint}/product-offers/{Uri.EscapeDataString(offerId)}/parts?include={Uri.EscapeDataString(filter)}");
+        => GetAsync($"{Endpoint}/product-offers/{Uri.EscapeDataString(offerId)}/parts?include={Uri.EscapeDataString(filter)}");
 
     [McpServerTool]
     [Description("Gets stock and price information for a specific offer")]
     public Task<string?> GetStockAndPriceFromOffer(
-        [Description("Access token. Can be obtained from a file")] string accessToken,
         [Description("Offer identifier")] string offerId)
-        => GetSelectedDataFromOffer(accessToken, offerId, "stock,price");
+        => GetSelectedDataFromOffer(offerId, "stock,price");
 
     [McpServerTool]
     [Description("Updates available stock for an offer")]
     public Task<string?> UpdateStock(
-        [Description("Access token. Can be obtained from a file")] string accessToken,
         [Description("Offer identifier")] string offerId,
         [Description("New available stock quantity")] int available)
-        => UpdateOffer(accessToken, offerId, JsonSerializer.Serialize(new { stock = new { available } }));
+        => UpdateOffer(offerId, JsonSerializer.Serialize(new { stock = new { available } }));
 
     [McpServerTool]
     [Description("Updates price of an offer")]
     public Task<string?> UpdatePrice(
-        [Description("Access token. Can be obtained from a file")] string accessToken,
         [Description("Offer identifier")] string offerId,
         [Description("New price")] decimal price)
-        => UpdateOffer(accessToken, offerId, JsonSerializer.Serialize(new { sellingMode = new { price = new { amount = price } } }));
+        => UpdateOffer(offerId, JsonSerializer.Serialize(new { sellingMode = new { price = new { amount = price } } }));
 
     [McpServerTool]
     [Description("Links an offer to a product")]
     public async Task<string?> UpdateUnderlyingProduct(
-        [Description("Access token. Can be obtained from a file")] string accessToken,
         [Description("Offer identifier")] string offerId,
         [Description("New product identifier (GTIN/EAN)")] string ean)
     {
-        var json = await GetOffer(accessToken, offerId);
+        var json = await GetOffer(offerId);
         ArgumentNullException.ThrowIfNullOrWhiteSpace(json, nameof(json));
 
         var doc = JsonNode.Parse(json) as JsonObject ??
@@ -84,27 +78,25 @@ public class OfferTools(HttpClient client) : SaleTools(client)
             "images":{{{images}}}, "description":{{{description}}}}
             """;
 
-        return await UpdateOffer(accessToken, offerId, body);
+        return await UpdateOffer(offerId, body);
     }
 
     [McpServerTool]
     [Description("Starts or activates an offer")]
     public Task<string?> StartOffer(
-        [Description("Access token. Can be obtained from a file")] string accessToken,
         [Description("Offer identifier")] string offerId)
-        => UpdateOffer(accessToken, offerId, JsonSerializer.Serialize(new { publication = new { status = "ACTIVE" } }));
+        => UpdateOffer(offerId, JsonSerializer.Serialize(new { publication = new { status = "ACTIVE" } }));
 
     [McpServerTool]
     [Description("Stops or ends an offer")]
     public Task<string?> StopOffer(
-        [Description("Access token. Can be obtained from a file")] string accessToken,
         [Description("Offer identifier")] string offerId)
-        => UpdateOffer(accessToken, offerId, JsonSerializer.Serialize(new { publication = new { status = "ENDED" } }));
+        => UpdateOffer(offerId, JsonSerializer.Serialize(new { publication = new { status = "ENDED" } }));
 
-    private Task<string?> UpdateOffer(string accessToken, string offerId, string body)
+    private Task<string?> UpdateOffer(string offerId, string body)
         => SendAsync(
             new HttpRequestMessage(HttpMethod.Patch, $"{Endpoint}/product-offers/{Uri.EscapeDataString(offerId)}")
             {
                 Content = new StringContent(body, Encoding.UTF8, "application/vnd.allegro.public.v1+json")
-            }, accessToken);
+            });
 }

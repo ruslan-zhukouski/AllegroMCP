@@ -1,17 +1,18 @@
-﻿using System.Net.Http.Headers;
+﻿using Server.Services;
+using System.Net.Http.Headers;
 
 namespace Server.Tools;
 
-public class ToolsBase(HttpClient client)
+public abstract class ToolsBase(HttpClient client, ITokenProvider provider)
 {
     protected static readonly string BaseEndpoint = "https://api.allegro.pl";
 
-    protected Task<string?> GetAsync(string accessToken, string uri)
-        => SendAsync(new HttpRequestMessage(HttpMethod.Get, uri), accessToken);
+    protected Task<string?> GetAsync(string uri)
+        => SendAsync(new HttpRequestMessage(HttpMethod.Get, uri));
 
-    protected async Task<string?> SendAsync(HttpRequestMessage request, string accessToken)
+    protected async Task<string?> SendAsync(HttpRequestMessage request)
     {
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", provider.GetAccessToken());
         request.Headers.Accept.Add(new("application/vnd.allegro.public.v1+json"));
         request.Headers.Accept.Add(new("application/vnd.allegro.beta.v1+json"));
         request.Headers.UserAgent.Add(

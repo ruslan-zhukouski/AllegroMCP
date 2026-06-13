@@ -1,17 +1,17 @@
-using Server.Tools;
+using Server.Services;
 
 namespace Server.Tests;
 
 public class Tools
 {
-    readonly HttpClient client = new();
+    readonly FileTokenProvider provider = new(PathToTokensFile);
 
     private static readonly string PathToTokensFile = "../../../../Host/bin/debug/net10.0/allegro_tokens.txt";
 
     [Fact]
     public void Is_AccessToken_Valid()
     {
-        var accessToken = AuthorizationTools.GetAccessToken(PathToTokensFile);
+        var accessToken = provider.GetAccessToken();
         Assert.NotNull(accessToken);
     }
 }
