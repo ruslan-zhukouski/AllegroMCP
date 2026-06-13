@@ -6,10 +6,12 @@ public class Tools
 {
     readonly HttpClient client = new();
 
+    private static readonly string PathToTokensFile = "../../../../Host/bin/debug/net10.0/allegro_tokens.txt";
+
     [Fact]
-    public async Task Test()
+    public void Is_AccessToken_Valid()
     {
-        var offerTools = new OfferTools(client);
-        var orderTools = new OrderTools(client);
+        var accessToken = AuthorizationTools.GetAccessToken(PathToTokensFile);
+        Assert.NotNull(accessToken);
     }
 }

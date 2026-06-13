@@ -27,7 +27,9 @@ public class AuthorizationTools(IHttpClientFactory factory)
 
     [McpServerTool]
     [Description("Generates access and refresh tokens")]
-    public async Task<string> GenerateAccessAndRefreshTokens(string deviceCode)
+    public async Task<string> GenerateTokens(
+        [Description("The device code received from the device authorization endpoint")] string deviceCode,
+        [Description("The file path where tokens should be saved")] string? filePathToSave = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(deviceCode, nameof(deviceCode));
 
@@ -42,14 +44,16 @@ public class AuthorizationTools(IHttpClientFactory factory)
 
         tokens.ExpiresOn = DateTime.UtcNow + TimeSpan.FromSeconds(tokens.ExpiresIn);
 
-        SaveTokensToFile(tokens);
+        SaveTokensToFile(filePathToSave, tokens);
 
-        return PathToTokensFile;
+        return filePathToSave;
     }
 
     [McpServerTool]
     [Description("Refreshes a pair of access and refresh tokens using refresh token which can be obtained from a file")]
-    public async Task<string> RefreshAccessAndRefreshTokens(string refreshToken)
+    public async Task<string> RefreshTokens(
+        [Description("The refresh token received from the token endpoint")] string refreshToken,
+        [Description("The file path where tokens should be saved")] string? filePathToSave = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(refreshToken, nameof(refreshToken));
 
@@ -64,49 +68,39 @@ public class AuthorizationTools(IHttpClientFactory factory)
 
         tokens.ExpiresOn = DateTime.UtcNow + TimeSpan.FromSeconds(tokens.ExpiresIn);
 
-        SaveTokensToFile(tokens);
-
-        return PathToTokensFile;
+        return SaveTokensToFile(filePathToSave, tokens);
     }
 
     [McpServerTool]
     [Description("Gets an access token from a file. If it is null, try to refresh tokens")]
-    public static string? GetAccessToken()
+    public static string? GetAccessToken([Description("The file path where tokens are saved")] string? file = null)
     {
-        var tokens = LoadTokensFromFile();
-
-        if (tokens == null || tokens.ExpiresOn <= DateTime.UtcNow - TimeSpan.FromDays(90) - TimeSpan.FromHours(12))
-        {
-            // Clear expired tokens from file
-            SaveTokensToFile(null);
-            return null;
-        }
-
-        return tokens.ExpiresOn <= DateTime.UtcNow ? null : tokens.AccessToken;
+        var tokens = RemoveExpiredTokens(file) ??
+            throw new InvalidOperationException("Access token is not found. Please generate tokens.");
+        if (tokens.ExpiresOn <= DateTime.UtcNow)
+            throw new InvalidOperationException("Access token is expired. Please refresh tokens.");
+        return tokens.AccessToken;
     }
 
     [McpServerTool]
     [Description("Gets a refresh token from a file. If it is null, you should re-generate new pair of tokens")]
-    public static string? GetRefreshToken()
+    public static string? GetRefreshToken([Description("The file path where tokens are saved")] string? file = null)
+        => RemoveExpiredTokens(file)?.RefreshToken;
+
+    [McpServerTool]
+    [Description("Deletes a file with access and refresh tokens if they are expired, returns tokens otherwise")]
+    public static Tokens? RemoveExpiredTokens([Description("The file path where tokens are saved")] string? file = null)
     {
-        var tokens = LoadTokensFromFile();
+        var tokens = LoadTokensFromFile(file);
 
         if (tokens == null || tokens.ExpiresOn <= DateTime.UtcNow - TimeSpan.FromDays(90) - TimeSpan.FromHours(12))
         {
-            // Clear expired tokens from file
-            SaveTokensToFile(null);
+            // Delete a file with tokens if tokens are expired for more than 90 days (refresh token lifetime according to Allegro API documentation)
+            SaveTokensToFile(file);
             return null;
         }
 
-        return tokens.RefreshToken;
-    }
-
-    [McpServerTool]
-    [Description("Deletes access and refresh tokens from a file")]
-    public static string RemoveAccessAndRefreshTokens()
-    {
-        SaveTokensToFile(null);
-        return PathToTokensFile;
+        return tokens;
     }
 
     private async Task<string?> PostAuthorization(string uri, string body)
@@ -129,13 +123,15 @@ public class AuthorizationTools(IHttpClientFactory factory)
     }
 
     // Loads tokens from a file if present. Returns null if not found or empty.
-    private static Tokens? LoadTokensFromFile()
+    private static Tokens? LoadTokensFromFile(string? file)
     {
         try
         {
-            if (File.Exists(PathToTokensFile))
+            file ??= PathToTokensFile;
+
+            if (File.Exists(file))
             {
-                var json = File.ReadAllText(PathToTokensFile).Trim();
+                var json = File.ReadAllText(file).Trim();
                 return JsonSerializer.Deserialize<Tokens>(json);
             }
         }
@@ -148,29 +144,33 @@ public class AuthorizationTools(IHttpClientFactory factory)
     }
 
     // Persists tokens to a file. Overwrites existing content.
-    private static void SaveTokensToFile(Tokens? tokens)
+    private static string SaveTokensToFile(string? file = null, Tokens? tokens = null)
     {
-        var json = JsonSerializer.Serialize(tokens);
+        file ??= PathToTokensFile;
 
         try
         {
-            if (string.IsNullOrWhiteSpace(json))
+            if (tokens is null)
             {
                 // Remove file if token cleared
-                if (File.Exists(PathToTokensFile)) File.Delete(PathToTokensFile);
-                return;
+                if (File.Exists(file)) File.Delete(file);
+                return file;
             }
 
+            var json = JsonSerializer.Serialize(tokens);
+
             // Ensure directory exists
-            var dir = Path.GetDirectoryName(PathToTokensFile);
+            var dir = Path.GetDirectoryName(file);
             if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
 
-            File.WriteAllText(PathToTokensFile, json);
+            File.WriteAllText(file, json);
         }
         catch
         {
             // Ignore errors writing token file to avoid breaking main flow
         }
+
+        return file;
     }
 }

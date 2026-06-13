@@ -14,6 +14,6 @@ builder.Services.AddHttpClient();
 builder.Services
     .AddMcpServer()
     .WithStdioServerTransport()
-    .WithToolsFromAssembly(typeof(Server.Tools.OfferTools).Assembly);
+    .WithToolsFromAssembly(typeof(Server.Tools.ToolsBase).Assembly);
 
 await builder.Build().RunAsync();

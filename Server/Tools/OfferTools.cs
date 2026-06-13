@@ -8,24 +8,22 @@ namespace Server.Tools;
 
 [McpServerToolType]
 [Description("Provides methods to retrieve offers data")]
-public class OfferTools(HttpClient client) : ToolsBase(client)
+public class OfferTools(HttpClient client) : SaleTools(client)
 {
-    private static readonly string OfferEndpoint = $"{BaseEndpoint}/sale";
-
     [McpServerTool]
     [Description("Gets a list of seller's offers")]
     public Task<string?> GetOffers(
         [Description("Access token. Can be obtained from a file")] string accessToken,
         [Description("The maximum number of offers returned in the response")] int limit = 10,
         [Description("The place to download the next portion of data from")] int offset = 0)
-        => GetAsync(accessToken, $"{OfferEndpoint}/offers?limit={limit}&offset={offset}");
+        => GetAsync(accessToken, $"{Endpoint}/offers?limit={limit}&offset={offset}");
 
     [McpServerTool]
     [Description("Gets all data of the particular offer")]
     public Task<string?> GetOffer(
         [Description("Access token. Can be obtained from a file")] string accessToken,
         [Description("Offer identifier")] string offerId)
-        => GetAsync(accessToken, $"{OfferEndpoint}/product-offers/{Uri.EscapeDataString(offerId)}");
+        => GetAsync(accessToken, $"{Endpoint}/product-offers/{Uri.EscapeDataString(offerId)}");
 
     [McpServerTool]
     [Description("Gets selected data for a specific offer")]
@@ -33,7 +31,7 @@ public class OfferTools(HttpClient client) : ToolsBase(client)
         [Description("Access token. Can be obtained from a file")] string accessToken,
         [Description("Offer identifier")] string offerId,
         [Description("Comma-separated list of fields to include")] string filter)
-        => GetAsync(accessToken, $"{OfferEndpoint}/product-offers/{Uri.EscapeDataString(offerId)}/parts?include={Uri.EscapeDataString(filter)}");
+        => GetAsync(accessToken, $"{Endpoint}/product-offers/{Uri.EscapeDataString(offerId)}/parts?include={Uri.EscapeDataString(filter)}");
 
     [McpServerTool]
     [Description("Gets stock and price information for a specific offer")]
@@ -105,7 +103,7 @@ public class OfferTools(HttpClient client) : ToolsBase(client)
 
     private Task<string?> UpdateOffer(string accessToken, string offerId, string body)
         => SendAsync(
-            new HttpRequestMessage(HttpMethod.Patch, $"{OfferEndpoint}/product-offers/{Uri.EscapeDataString(offerId)}")
+            new HttpRequestMessage(HttpMethod.Patch, $"{Endpoint}/product-offers/{Uri.EscapeDataString(offerId)}")
             {
                 Content = new StringContent(body, Encoding.UTF8, "application/vnd.allegro.public.v1+json")
             }, accessToken);
