@@ -28,8 +28,7 @@ public class AuthorizationTools(IHttpClientFactory factory, ITokenProvider provi
     [McpServerTool]
     [Description("Generates access and refresh tokens")]
     public async Task<string> GenerateTokens(
-        [Description("The device code received from the device authorization endpoint")] string deviceCode,
-        [Description("The file path where tokens should be saved")] string? filePathToSave = null)
+        [Description("The device code received from the device authorization endpoint")] string deviceCode)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(deviceCode, nameof(deviceCode));
 
@@ -50,8 +49,7 @@ public class AuthorizationTools(IHttpClientFactory factory, ITokenProvider provi
     [McpServerTool]
     [Description("Refreshes a pair of access and refresh tokens using refresh token which can be obtained from a file")]
     public async Task<string> RefreshTokens(
-        [Description("The refresh token received from the token endpoint")] string refreshToken,
-        [Description("The file path where tokens should be saved")] string? filePathToSave = null)
+        [Description("The refresh token received from the token endpoint")] string refreshToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(refreshToken, nameof(refreshToken));
 

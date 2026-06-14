@@ -5,7 +5,9 @@ namespace Server.Services;
 
 public class FileTokenProvider(string? pathToTokensFile = null) : ITokenProvider
 {
-    private readonly string pathToTokensFile = pathToTokensFile ?? Path.Combine(AppContext.BaseDirectory, "allegro_tokens.txt");
+    private static readonly bool IsDocker = bool.Parse(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") ?? "false");
+    private readonly string pathToTokensFile = pathToTokensFile ?? (IsDocker ? "/home/app/allegro_tokens.txt"
+        : Path.Combine(AppContext.BaseDirectory, "allegro_tokens.txt"));
 
     // Gets an access token from a file. If it is null, try to refresh tokens
     public string? GetAccessToken()

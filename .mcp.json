@@ -1,15 +1,19 @@
 {
-  "inputs": [],
   "servers": {
     "AllegroMCPServer": {
-      "type": "stdio",
-      "command": "dotnet",
+      "command": "docker",
       "args": [
         "run",
-        "--project",
-        "Host/Host.csproj"
-      ],
-      "env": {}
+        "-i",
+        "--rm",
+        "-e",
+        "ALLEGRO_CLIENT_ID",
+        "-e",
+        "ALLEGRO_CLIENT_SECRET",
+        "--mount",
+        "type=volume,src=allegromcp,target=/home/app",
+        "ruslanzhukouski/allegromcp"
+      ]
     }
   }
 }
