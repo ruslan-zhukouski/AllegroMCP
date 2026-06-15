@@ -28,7 +28,7 @@ public class OfferTools(HttpClient client, ITokenProvider provider) : SaleTools(
     [Description("Gets selected data for a specific offer")]
     public Task<string?> GetSelectedDataFromOffer(
         [Description("Offer identifier")] string offerId,
-        [Description("Comma-separated list of fields to include")] string filter)
+        [Description("Comma-separated list of fields to include. Available options are stock and price")] string filter)
         => GetAsync($"{Endpoint}/product-offers/{Uri.EscapeDataString(offerId)}/parts?include={Uri.EscapeDataString(filter)}");
 
     [McpServerTool]

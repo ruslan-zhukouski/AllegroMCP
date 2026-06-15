@@ -1,4 +1,9 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".mcp.json" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+  </Folder>
   <Project Path="Host/Host.csproj" />
   <Project Path="Server.Tests/Server.Tests.csproj" Id="c5118273-10a9-4a2a-9bbf-03f2dcb93f09" />
   <Project Path="Server/Server.csproj" Id="24757c45-7df2-47c5-a50d-6f3f3d722aac" />
