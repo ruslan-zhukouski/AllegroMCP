@@ -48,9 +48,10 @@ public class AuthorizationTools(IHttpClientFactory factory, ITokenProvider provi
 
     [McpServerTool]
     [Description("Refreshes a pair of access and refresh tokens using refresh token which can be obtained from a file")]
-    public async Task<string> RefreshTokens(
-        [Description("The refresh token received from the token endpoint")] string refreshToken)
+    public async Task<string> RefreshTokens()
     {
+        var refreshToken = provider.GetRefreshToken();
+
         ArgumentException.ThrowIfNullOrWhiteSpace(refreshToken, nameof(refreshToken));
 
         var answer = await PostAuthorization("token",
